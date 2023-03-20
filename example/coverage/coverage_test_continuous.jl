@@ -3,98 +3,129 @@ using PyPlot
 using SubmodularMaximization
 using Distributions
 using LinearAlgebra
+using Random
 
 
-pygui(false)
-fig_path = "./fig/coverage_test"
-mkpath(fig_path)
+# pygui(false)
+# fig_path = "./fig/coverage_test"
+# mkpath(fig_path)
 
-num_agents = 5
-num_sensors = 5
-nominal_area = 2.0
+# num_agents = 5
+# num_sensors = 5
+# nominal_area = 2.0
 
-sensor_radius = sqrt(nominal_area / (num_agents * pi))
-station_radius = sensor_radius
+# sensor_radius = sqrt(nominal_area / (num_agents * pi))
+# station_radius = sensor_radius
 
-agent_specification = CircleAgentSpecification(sensor_radius, station_radius,
-                                         num_sensors)
+# agent_specification = CircleAgentSpecification(sensor_radius, station_radius,
+#                                          num_sensors)
 
-agents = generate_agents(agent_specification, num_agents)
+# agents = generate_agents(agent_specification, num_agents)
 
-f(x) = mean_area_coverage(x, 100)
-problem = ExplicitPartitionProblem(f, agents)
+# f(x) = mean_area_coverage(x, 100)
+# problem = ExplicitPartitionProblem(f, agents)
 
 ###### Continuous Greedy Algorithm Test #######
 
-# Define the gradient of the multilinear extension of the submodular function f
-function gradient_multilinear_extension(f, n, x, m=5n^5)
-    g = zeros(n)
-    for i in 1:m
-        S = rand(0:1, n)
-        T = rand(0:1, n)
-        S_val = f(findall(S .== 1))
-        T_val = f(findall(T .== 1))
-        delta_val = prod(1 .- (1 .- x) .* (S .- T))
-        g = g .+ delta_val * (S .- T) * (S_val - T_val)
-    end
-    return g
-end
-# Define the continuous greedy algorithm for the submodular welfare problem using the multilinear extension with n^5 samples
-function continuous_greedy_multilinear_extension_n5(f, n, v, ϵ)
-    x = zeros(n)
-    p = zeros(n)
-    while true
-        g = gradient_multilinear_extension(f, n, x)
-        v_norm = norm(v)
-        if v_norm == 0
-            break
-        end
-        g_norm = norm(g)
-        if g_norm == 0
-            break
-        end
-        g = g ./ g_norm
-        s = argmax(dot(v, g))
-        if dot(v, g) / v_norm <= (1 - ϵ)
-            break
-        end
-        x[s] = 1.0
-        p[s] += 1.0
-    end
-    p = p / sum(p)
-    return p
+
+
+# Define the number of players and items
+function test_continuous()
+n_players = 5
+n_items = 5
+
+# Initialize y matrix
+y = zeros(n_players, n_items)
+
+# Initialize t and delta
+t = 0.0
+delta = 1.0 / (n_players * n_items)^2
+
+# Define the players' values for each item (random for demonstration purposes)
+w = rand(n_players, n_items)
+
+# Define a function to estimate the expected marginal profit of player i from item j
+function expected_marginal_profit(i, j, y, w)
+    # Generate a random set Ri containing each item j independently with probability yij(t)
+    R = [j for j = 1:n_items if rand() < y[i, j]]
+    # Compute the expected marginal profit of player i from item j
+    wi_Ri_j = sum(w[i, R]) + w[i, j]
+    wi_Ri = sum(w[i, R])
+    return wi_Ri_j - wi_Ri
 end
 
-# example usage
-# m = 3
-# n = 4
-# V = collect(1:m*n)
-# f(S) = length(S)
-# p = continuous_greedy(f, V, m, (m*n)^5)
-# println(p)
+# Initialize the distribution of all mn actions
+action_distribution = zeros(n_players, n_items)
 
-
-
-
-function solve_continuous(p::PartitionProblem)
-    # m = p.partition_matroid.size()
-    # get the number of robots
-    (size_robot,) = size(p.partition_matroid)
-    # get the number of actions 
-    (size_action,) = size(p.partition_matroid[1].sensors)
-    action_set = p.partition_matroid[1].sensors;
-    for i in size_robot
-        if i != 1
-            union(action_set, p.partition_matroid[i].sensors)
+# Run the algorithm
+while t < 1
+    # Estimate the expected marginal profits for all players and items
+    
+    ω = zeros(n_players, n_items)
+    for i = 1:n_players
+        for j = 1:n_items
+            for k = 1:(n_players * n_items)^2
+                ω[i, j] += expected_marginal_profit(i, j, y, w)
+                # println("Loop4\n");
+            end
+            ω[i, j] /= (n_players * n_items)^2
+            # println("Loop3\n");
+        end
+        # println("Loop2\n");
+    end
+    # Update y matrix
+    for j = 1:n_items
+        i_star = argmax(ω[:, j])
+        for i = 1:n_players
+            if i == i_star
+                y[i, j] += delta
+            else
+                y[i, j] -= delta / (n_players - 1)
+            end
         end
     end
+    # Increment t
+    t += delta
+    println("Loop1: $t");
+end
 
-    p = continuous_greedy(p.objective, action_set, size_robot, (size_robot*size_action)^5)
-    println("The size of x is $size_action")
-  end
+println("OutLoop1\n");
+
+# Compute the distribution of all mn actions
+for i = 1:n_players
+    for j = 1:n_items
+        action_distribution[i, j] = y[i, j] * prod(1 - y[k, j] for k = 1:n_players if k != i)
+    end
+end
+
+# Print the action distribution matrix
+println("Action distribution matrix:")
+println(action_distribution)
+end
+
+test_continuous()
 
 
-solve_continuous(problem)
+
+# function solve_continuous(p::PartitionProblem)
+#     # m = p.partition_matroid.size()
+#     # get the number of robots
+#     (size_robot,) = size(p.partition_matroid)
+#     # get the number of actions 
+#     (size_action,) = size(p.partition_matroid[1].sensors)
+#     action_set = p.partition_matroid[1].sensors;
+#     for i in size_robot
+#         if i != 1
+#             union(action_set, p.partition_matroid[i].sensors)
+#         end
+#     end
+
+#     p = continuous_greedy(p.objective, action_set, size_robot, (size_robot*size_action)^5)
+#     println("The size of x is $size_action")
+#   end
+
+
+# solve_continuous(problem)
 
 # function evaluate_solver(solver, name)
 #   println("$name solver running")
