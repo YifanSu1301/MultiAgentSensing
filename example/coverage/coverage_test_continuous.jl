@@ -31,76 +31,79 @@ using Random
 
 # Define the number of players and items
 function test_continuous()
-n_players = 5
-n_items = 5
+    n_players = 5
+    n_items = 5
 
-# Initialize y matrix
-y = zeros(n_players, n_items)
+    # Initialize y matrix
+    y = zeros(n_players, n_items)
 
-# Initialize t and delta
-t = 0.0
-delta = 1.0 / (n_players * n_items)^2
+    # Initialize t and delta
+    t = 0.0
+    delta = 1.0 / (n_players * n_items)^2
 
-# Define the players' values for each item (random for demonstration purposes)
-w = rand(n_players, n_items)
+    # Define the players' values for each item (random for demonstration purposes)
+    w = rand(n_players, n_items)
 
-# Define a function to estimate the expected marginal profit of player i from item j
-function expected_marginal_profit(i, j, y, w)
-    # Generate a random set Ri containing each item j independently with probability yij(t)
-    R = [j for j = 1:n_items if rand() < y[i, j]]
-    # Compute the expected marginal profit of player i from item j
-    wi_Ri_j = sum(w[i, R]) + w[i, j]
-    wi_Ri = sum(w[i, R])
-    return wi_Ri_j - wi_Ri
-end
-
-# Initialize the distribution of all mn actions
-action_distribution = zeros(n_players, n_items)
-
-# Run the algorithm
-while t < 1
-    # Estimate the expected marginal profits for all players and items
-    
-    ω = zeros(n_players, n_items)
-    for i = 1:n_players
-        for j = 1:n_items
-            for k = 1:(n_players * n_items)^2
-                ω[i, j] += expected_marginal_profit(i, j, y, w)
-                # println("Loop4\n");
-            end
-            ω[i, j] /= (n_players * n_items)^2
-            # println("Loop3\n");
-        end
-        # println("Loop2\n");
+    # Define a function to estimate the expected marginal profit of player i from item j
+    function expected_marginal_profit(i, j, y, w)
+        # Generate a random set Ri containing each item j independently with probability yij(t)
+        R = [j for j = 1:n_items if rand() < y[i, j]]
+        # Compute the expected marginal profit of player i from item j
+        wi_Ri_j = sum(w[i, R]) + w[i, j]
+        wi_Ri = sum(w[i, R])
+        return wi_Ri_j - wi_Ri
     end
-    # Update y matrix
-    for j = 1:n_items
-        i_star = argmax(ω[:, j])
+
+    # Initialize the distribution of all mn actions
+    action_distribution = zeros(n_players, n_items)
+
+    # Run the algorithm
+    while t < 1
+        # Estimate the expected marginal profits for all players and items
+        
+        ω = zeros(n_players, n_items)
         for i = 1:n_players
-            if i == i_star
-                y[i, j] += delta
-            else
-                y[i, j] -= delta / (n_players - 1)
+            for j = 1:n_items
+                for k = 1:(n_players * n_items)^3
+                    ω[i, j] += expected_marginal_profit(i, j, y, w)
+                    # println("Loop4\n");
+                end
+                ω[i, j] /= (n_players * n_items)^3
+                # println("Loop3\n");
+            end
+            # println("Loop2\n");
+        end
+        # Update y matrix
+        for j = 1:n_items
+            i_star = argmax(ω[:, j])
+            for i = 1:n_players
+                if i == i_star
+                    y[i, j] += delta
+                else
+                    # y[i, j] -= delta / (n_players - 1)
+                    y[i,j] = y[i,j]
+                end
             end
         end
+        # Increment t
+        t += delta
+        # println("Loop1: $t");
     end
-    # Increment t
-    t += delta
-    println("Loop1: $t");
-end
 
-println("OutLoop1\n");
+    # println("OutLoop1\n");
 
-# Compute the distribution of all mn actions
-for i = 1:n_players
-    for j = 1:n_items
-        action_distribution[i, j] = y[i, j] * prod(1 - y[k, j] for k = 1:n_players if k != i)
-    end
-end
+    # Compute the distribution of all mn actions
+    # for i = 1:n_players
+    #     for j = 1:n_items
+    #         y[i, j] = y[i, j] * prod(1 - y[k, j] for k = 1:n_players if k != i)
+    #     end
+    # end
 
-# Print the action distribution matrix
-println("Action distribution matrix:")
-println(action_distribution)
+    # Print the action distribution matrix
+    println("W:")
+    println(w)
+    println("Action distribution matrix:")
+    println(y)
 end
 
 test_continuous()
