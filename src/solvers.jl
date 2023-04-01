@@ -18,6 +18,20 @@ function optionally_threaded(f, collection; threaded = false)
     end
   end
 end
+#######################################
+# Continuous solvers (Test)
+#######################################
+function solve_continuous(p::PartitionProblem, y)
+  selection = empty(p)
+  for i = 1:length(p.partition_matroid[1].sensors)
+      for j = 1:length(p.partition_matroid)
+          if(rand() < y[i,j])
+              push!(selection, (j,i))
+          end
+      end
+  end
+  evaluate_solution(p, selection)
+end
 
 #######################################
 # Basic solvers (sequential and myopic)
@@ -48,6 +62,7 @@ function solve_sequential(p::PartitionProblem)
   end
 
   evaluate_solution(p, selection)
+ 
 end
 
 #############################################################
