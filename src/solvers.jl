@@ -21,15 +21,72 @@ end
 #######################################
 # Continuous solvers (Test)
 #######################################
-function solve_continuous(p::PartitionProblem, y)
+function solve_continuous(p::PartitionProblem)
+  num_agents = length(p.partition_matroid)
+  num_sensors = length(p.partition_matroid[1].sensors)
+  # Initialize y matrix
+  y = zeros(num_sensors, num_agents)
+
+  # Initialize t and delta
+  t = 0.0
+  delta = 1.0 / (num_agents * num_sensors)
+
+
+  # Define a function to estimate the expected marginal profit of player i from item j
+  function expected_marginal_profit(i, j, y, w)
+      # Generate a random set Ri containing each item j independently with probability yij(t)
+      R = [x for x = 1:num_agents if x != j && rand() < y[i, x]]
+      # if(length(R) != 0)
+      #   print(R)
+      # end
+      
+      g(j) = p.partition_matroid[j].sensors[i]
+      R = map(g, R)
+      newR = copy(R)
+      push!(newR, p.partition_matroid[j].sensors[i])
+
+      # Compute the expected marginal profit of player i from item j
+      wi_Ri_j = w(newR)
+      wi_Ri = w(R)
+      return wi_Ri_j - wi_Ri
+  end
+
+  # Run the algorithm
+  while t < 1
+      # Estimate the expected marginal profits for all players and items
+      ω = zeros(num_sensors, num_agents)
+      for i = 1:num_sensors
+          for j = 1:num_agents
+              for k = 1:(num_sensors * num_agents)
+                  ω[i, j] += expected_marginal_profit(i, j, y, p.objective)
+              end
+              ω[i, j] /= (num_sensors * num_agents)
+          end
+      end
+      # Update y matrix
+      for j = 1:num_agents
+          i_star = argmax(ω[:, j])
+          y[i_star, j] += delta
+      end
+      # Increment t
+      t += delta
+      # println("Loop1: $t");
+  end
+
+  # Print the action distribution matrix
+  println("Action distribution matrix:")
+  println(y)
+  
   selection = empty(p)
-  for i = 1:length(p.partition_matroid[1].sensors)
-      for j = 1:length(p.partition_matroid)
+  for j = 1:length(p.partition_matroid)
+      for i = 1:length(p.partition_matroid[1].sensors)
           if(rand() < y[i,j])
               push!(selection, (j,i))
+              break
           end
       end
   end
+
   evaluate_solution(p, selection)
 end
 

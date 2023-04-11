@@ -39,6 +39,7 @@ for num_partitions in partitions
 end
 
 push!(solvers, (solve_sequential, "Sequential"))
+push!(solvers, (solve_continuous, "Continuous"))
 
 results = zeros(num_trials, length(solvers))
 

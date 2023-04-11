@@ -6,8 +6,8 @@ pygui(false)
 fig_path = "./fig/coverage_test"
 mkpath(fig_path)
 
-num_agents = 5
-num_sensors = 5
+num_agents = 10
+num_sensors = 10
 nominal_area = 2.0
 
 sensor_radius = sqrt(nominal_area / (num_agents * pi))
@@ -47,11 +47,12 @@ end
 #evaluate_solver(solve_myopic, "Myopic")
 #evaluate_solver(solve_random, "Random")
 evaluate_solver(solve_sequential, "Sequential")
+evaluate_solver(solve_continuous, "Continuous")
 
-for num_partitions in [2, 4, 8]
-  solve_n(p) = solve_n_partitions(num_partitions, p)
-  evaluate_solver(solve_n, "Partition-$num_partitions")
-end
+# for num_partitions in [2, 4, 8]
+#   solve_n(p) = solve_n_partitions(num_partitions, p)
+#   evaluate_solver(solve_n, "Partition-$num_partitions")
+# end
 
 #@show mean_weight(problem)
 #@show total_weight(problem)
