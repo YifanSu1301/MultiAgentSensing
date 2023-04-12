@@ -29,11 +29,11 @@ function solve_continuous(p::PartitionProblem)
 
   # Initialize t and delta
   t = 0.0
-  delta = 1.0 / (num_agents * num_sensors)
+  delta = 1.0 / (num_agents * num_sensors)^2
 
 
   # Define a function to estimate the expected marginal profit of player i from item j
-  function expected_marginal_profit(i, j, y, w)
+  function expected_marginal_profit(i, j, y, w, my_dict)
       # Generate a random set Ri containing each item j independently with probability yij(t)
       R = [x for x = 1:num_agents if x != j && rand() < y[i, x]]
       # if(length(R) != 0)
@@ -46,21 +46,35 @@ function solve_continuous(p::PartitionProblem)
       push!(newR, p.partition_matroid[j].sensors[i])
 
       # Compute the expected marginal profit of player i from item j
-      wi_Ri_j = w(newR)
-      wi_Ri = w(R)
+      if haskey(my_dict, newR)
+        wi_Ri_j =  my_dict[newR]
+      else
+        wi_Ri_j = w(newR)
+        my_dict[newR] = wi_Ri_j
+      end
+     
+      if haskey(my_dict, R)
+        wi_Ri =  my_dict[R]
+      else
+        wi_Ri = w(R)
+        my_dict[R] = wi_Ri
+      end
       return wi_Ri_j - wi_Ri
   end
-
+  # my_dict = Dict()
   # Run the algorithm
   while t < 1
       # Estimate the expected marginal profits for all players and items
       ω = zeros(num_sensors, num_agents)
-      for i = 1:num_sensors
+      
+      Threads.@threads for i = 1:num_sensors
+          my_dict = Dict()
           for j = 1:num_agents
-              for k = 1:(num_sensors * num_agents)
-                  ω[i, j] += expected_marginal_profit(i, j, y, p.objective)
+              for k = 1:(num_sensors * num_agents)^3
+                  ω[i, j] += expected_marginal_profit(i, j, y, p.objective, my_dict)
               end
-              ω[i, j] /= (num_sensors * num_agents)
+              ω[i, j] /= (num_sensors * num_agents)^3
+              # println("Loop2: $j")
           end
       end
       # Update y matrix
@@ -70,7 +84,7 @@ function solve_continuous(p::PartitionProblem)
       end
       # Increment t
       t += delta
-      # println("Loop1: $t");
+      println("Loop1: $t");
   end
 
   # Print the action distribution matrix
@@ -86,7 +100,7 @@ function solve_continuous(p::PartitionProblem)
           end
       end
   end
-
+  println(selection)
   evaluate_solution(p, selection)
 end
 
@@ -117,7 +131,7 @@ function solve_sequential(p::PartitionProblem)
 
     push!(selection, solution_element)
   end
-
+  println(selection)
   evaluate_solution(p, selection)
  
 end
