@@ -29,19 +29,30 @@ function solve_continuous(p::PartitionProblem)
 
   # Initialize t and delta
   t = 0.0
-  delta = 1.0 / (num_agents * num_sensors)^2
+  delta = 1.0 / (num_agents * num_sensors)
 
 
   # Define a function to estimate the expected marginal profit of player i from item j
   function expected_marginal_profit(i, j, y, w, my_dict)
       # Generate a random set Ri containing each item j independently with probability yij(t)
-      R = [x for x = 1:num_agents if x != j && rand() < y[i, x]]
+      R =[]
+      for agents = 1 : num_agents
+        for sensors = 1 : num_sensors
+          if sensors == i && agents == j
+            continue
+          elseif rand() < y[sensors, agents]
+           push!(R, p.partition_matroid[agents].sensors[sensors])
+          end
+        end
+        
+      end
+      # R = [x for x = 1:num_agents if x != j && rand() < y[i, x]]
       # if(length(R) != 0)
       #   print(R)
       # end
       
-      g(j) = p.partition_matroid[j].sensors[i]
-      R = map(g, R)
+      # g(j) = p.partition_matroid[j].sensors[i]
+      # R = map(g, R)
       newR = copy(R)
       push!(newR, p.partition_matroid[j].sensors[i])
 
@@ -61,19 +72,20 @@ function solve_continuous(p::PartitionProblem)
       end
       return wi_Ri_j - wi_Ri
   end
-  # my_dict = Dict()
+  my_dict = Dict()
   # Run the algorithm
   while t < 1
       # Estimate the expected marginal profits for all players and items
       ω = zeros(num_sensors, num_agents)
-      
-      Threads.@threads for i = 1:num_sensors
-          my_dict = Dict()
-          for j = 1:num_agents
-              for k = 1:(num_sensors * num_agents)^3
+
+      # my_dict = Dict()
+      for i = 1:num_sensors
+         for j = 1:num_agents
+            # my_dict = Dict()
+              for k = 1:(num_sensors * num_agents)
                   ω[i, j] += expected_marginal_profit(i, j, y, p.objective, my_dict)
               end
-              ω[i, j] /= (num_sensors * num_agents)^3
+              ω[i, j] /= (num_sensors * num_agents)
               # println("Loop2: $j")
           end
       end
@@ -93,12 +105,15 @@ function solve_continuous(p::PartitionProblem)
   
   selection = empty(p)
   for j = 1:length(p.partition_matroid)
+      max = y[1,j]
+      max_index = 1
       for i = 1:length(p.partition_matroid[1].sensors)
-          if(rand() < y[i,j])
-              push!(selection, (j,i))
-              break
+          if(max < y[i,j])
+              max = y[i,j]
+              max_index = i
           end
       end
+      push!(selection, (j, max_index))
   end
   println(selection)
   evaluate_solution(p, selection)

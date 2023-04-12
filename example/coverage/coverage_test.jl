@@ -6,7 +6,7 @@ pygui(false)
 fig_path = "./fig/coverage_test"
 mkpath(fig_path)
 
-num_agents = 7
+num_agents = 5
 num_sensors = 5
 nominal_area = 2.0
 
