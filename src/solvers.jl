@@ -19,8 +19,79 @@ function optionally_threaded(f, collection; threaded = false)
   end
 end
 #######################################
+# Multiround Sequential solvers (Test)
+#######################################
+function solve_sequential_multiround(p::PartitionProblem, num_rounds::Int)
+  selection = empty(p)
+
+  for iter = 1:num_rounds
+    for ii = 1:get_num_agents(p)
+      # filter returns element values, findall returns element indices
+      prev_sol = findall(t -> t[1]==ii,selection)
+      
+      # check if ii in selection
+      if !isempty(prev_sol) 
+        # remove ii from selection
+        deleteat!(selection, prev_sol)
+      end
+
+      solution_element = solve_block(p, ii, selection)
+
+      push!(selection, solution_element)
+    end
+  end
+
+  evaluate_solution(p, selection)
+end
+
+#######################################
 # Continuous solvers (Test)
 #######################################
+# Define a function to estimate the expected marginal profit of player i from item j
+function expected_marginal_profit(i, j, y, p, my_dict)
+  # Generate a random set Ri containing each item j independently with probability yij(t)
+  num_agents = length(p.partition_matroid)
+  num_sensors = length(p.partition_matroid[1].sensors)
+  R =[]
+  keyM = zeros(num_sensors, num_agents)
+  
+  for agents = 1 : num_agents
+    if agents == j
+      continue
+    end
+    for sensors = 1 : num_sensors
+      if rand() < y[sensors, agents]
+        keyM[sensors, agents] = 1
+        push!(R, p.partition_matroid[agents].sensors[sensors])
+      end
+    end
+    
+  end
+
+  if haskey(my_dict, keyM)
+    wi_Ri =  my_dict[keyM]
+  else
+    # println(keyM)
+    wi_Ri = p.objective(R)
+    my_dict[keyM] = wi_Ri
+  end
+
+  # Compute the expected marginal profit of player i from item j
+  
+  push!(R, p.partition_matroid[j].sensors[i])
+ 
+  keyMj = copy(keyM)
+  keyMj[i,j] = 1
+  if haskey(my_dict, keyMj)
+    wi_Ri_j =  my_dict[keyMj]
+  else
+    wi_Ri_j =  p.objective(R)
+    my_dict[keyMj] = wi_Ri_j
+  end
+  
+  return wi_Ri_j - wi_Ri
+end
+
 function solve_continuous(p::PartitionProblem)
   num_agents = length(p.partition_matroid)
   num_sensors = length(p.partition_matroid[1].sensors)
@@ -29,93 +100,56 @@ function solve_continuous(p::PartitionProblem)
 
   # Initialize t and delta
   t = 0.0
-  delta = 1.0 / (num_agents * num_sensors)
+  delta = 1.0 / ((num_agents*num_sensors)^2)
 
-
-  # Define a function to estimate the expected marginal profit of player i from item j
-  function expected_marginal_profit(i, j, y, w, my_dict)
-      # Generate a random set Ri containing each item j independently with probability yij(t)
-      R =[]
-      for agents = 1 : num_agents
-        for sensors = 1 : num_sensors
-          if sensors == i && agents == j
-            continue
-          elseif rand() < y[sensors, agents]
-           push!(R, p.partition_matroid[agents].sensors[sensors])
-          end
-        end
-        
-      end
-      # R = [x for x = 1:num_agents if x != j && rand() < y[i, x]]
-      # if(length(R) != 0)
-      #   print(R)
-      # end
-      
-      # g(j) = p.partition_matroid[j].sensors[i]
-      # R = map(g, R)
-      newR = copy(R)
-      push!(newR, p.partition_matroid[j].sensors[i])
-
-      # Compute the expected marginal profit of player i from item j
-      if haskey(my_dict, newR)
-        wi_Ri_j =  my_dict[newR]
-      else
-        wi_Ri_j = w(newR)
-        my_dict[newR] = wi_Ri_j
-      end
-     
-      if haskey(my_dict, R)
-        wi_Ri =  my_dict[R]
-      else
-        wi_Ri = w(R)
-        my_dict[R] = wi_Ri
-      end
-      return wi_Ri_j - wi_Ri
-  end
   my_dict = Dict()
   # Run the algorithm
   while t < 1
       # Estimate the expected marginal profits for all players and items
       ω = zeros(num_sensors, num_agents)
-
-      # my_dict = Dict()
       for i = 1:num_sensors
          for j = 1:num_agents
-            # my_dict = Dict()
-              for k = 1:(num_sensors * num_agents)
-                  ω[i, j] += expected_marginal_profit(i, j, y, p.objective, my_dict)
+              for k = 1:(num_agents*num_sensors)^3
+                  ω[i, j] += expected_marginal_profit(i, j, y, p, my_dict)
               end
-              ω[i, j] /= (num_sensors * num_agents)
-              # println("Loop2: $j")
+              ω[i, j] /= (num_agents*num_sensors)^3
+              
           end
       end
       # Update y matrix
+      # println(y)
+      # println(ω)
       for j = 1:num_agents
           i_star = argmax(ω[:, j])
           y[i_star, j] += delta
       end
       # Increment t
       t += delta
-      println("Loop1: $t");
+      # println(t)
+      # println(t)
   end
-
-  # Print the action distribution matrix
-  println("Action distribution matrix:")
-  println(y)
-  
+  # println(y)
   selection = empty(p)
   for j = 1:length(p.partition_matroid)
-      max = y[1,j]
-      max_index = 1
-      for i = 1:length(p.partition_matroid[1].sensors)
-          if(max < y[i,j])
-              max = y[i,j]
-              max_index = i
-          end
+      y_j = copy(y[:, j])
+      y_j = sort(y_j)
+      # println(y_j)
+      idx = findfirst(x -> x > rand(),y_j)
+      # println(idx)
+      if(idx == nothing)
+        _, idx = findmax(y_j)
+        # println(idx)
       end
-      push!(selection, (j, max_index))
+      for val = 1:num_sensors
+        if y[:,j][val] == y_j[idx]
+          idx = val
+          break
+        end
+      end
+      # println(idx)
+      push!(selection, (j, idx))
   end
-  println(selection)
+  # println(selection)
   evaluate_solution(p, selection)
 end
 
@@ -146,7 +180,7 @@ function solve_sequential(p::PartitionProblem)
 
     push!(selection, solution_element)
   end
-  println(selection)
+  # println(selection)
   evaluate_solution(p, selection)
  
 end

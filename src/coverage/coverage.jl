@@ -7,7 +7,7 @@ export Circle, CircleAgentSpecification,
   mean_area_coverage
 
 # evaluation of the area coverage objective
-struct Circle
+mutable struct Circle
   center::Array{Float64, 1}
   radius::Float64
 end

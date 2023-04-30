@@ -11,7 +11,7 @@ fig_path = "./fig/coverage_test"
 mkpath(fig_path)
 
 num_agents = 7
-num_sensors = 5
+num_sensors = 7
 nominal_area = 2.0
 
 sensor_radius = sqrt(nominal_area / (num_agents * pi))
@@ -22,7 +22,7 @@ agent_specification = CircleAgentSpecification(sensor_radius, station_radius,
 
 agents = generate_agents(agent_specification, num_agents)
 
-f(x) = mean_area_coverage(x, 100)
+f(x) = mean_area_coverage(x, 20)
 problem = ExplicitPartitionProblem(f, agents)
 
 function solve_continuous(p::PartitionProblem)

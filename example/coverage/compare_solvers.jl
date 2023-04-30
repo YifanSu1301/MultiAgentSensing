@@ -13,8 +13,8 @@ mkpath(data_path)
 
 num_trials = 100
 
-num_agents = 50
-num_sensors = 10
+num_agents = 5
+num_sensors = 5
 nominal_area = 2.0
 
 sensor_radius = sqrt(nominal_area / (num_agents * pi))
@@ -23,7 +23,7 @@ station_radius = 2 * sensor_radius
 agent_specification = CircleAgentSpecification(sensor_radius, station_radius,
                                          num_sensors)
 
-f(x) = mean_area_coverage(x, 100)
+f(x) = mean_area_coverage(x, 50)
 
 solvers = Any[]
 
@@ -40,6 +40,8 @@ end
 
 push!(solvers, (solve_sequential, "Sequential"))
 push!(solvers, (solve_continuous, "Continuous"))
+# solve_multi(p) = solve_sequential_multiround(p,3)
+# push!(solvers, (solve_multi, "Multi-sequential"))
 
 results = zeros(num_trials, length(solvers))
 
@@ -47,7 +49,7 @@ problems = map(1:num_trials) do unused
   agents = generate_agents(agent_specification, num_agents)
   problem = ExplicitPartitionProblem(f, agents)
 end
-@save "$data_path/partition_matroids" map(x->x.partition_matroid, problems)
+@save compress = false "$data_path/partition_matroids" (map(x->x.partition_matroid, problems))
 
 for trial_num in 1:length(problems)
   println("Trial: $trial_num")
@@ -61,7 +63,7 @@ for trial_num in 1:length(problems)
     results[trial_num, solver_num] = solution.value
   end
 end
-@save "$data_path/results" results
+@save compress = false "$data_path/results" results
 
 # now analyze weights
 weight_matrices = map(problems, 1:length(problems)) do problem, ii
@@ -69,7 +71,7 @@ weight_matrices = map(problems, 1:length(problems)) do problem, ii
   compute_weight_matrix(problem)
 end
 
-@save "$data_path/weights" weight_matrices
+@save compress = false "$data_path/weights" weight_matrices
 
 total_weights = map(weight_matrices, 1:length(problems)) do weight_matrix, ii
   println("Total weights $ii")

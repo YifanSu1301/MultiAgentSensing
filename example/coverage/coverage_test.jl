@@ -10,6 +10,7 @@ num_agents = 5
 num_sensors = 5
 nominal_area = 2.0
 
+
 sensor_radius = sqrt(nominal_area / (num_agents * pi))
 station_radius = sensor_radius
 
@@ -18,12 +19,33 @@ agent_specification = CircleAgentSpecification(sensor_radius, station_radius,
 
 agents = generate_agents(agent_specification, num_agents)
 
-f(x) = mean_area_coverage(x, 100)
+f(x) = mean_area_coverage(x, 50)
+# agents[1].sensors[1].center = [0.4,0.6]
+# agents[1].sensors[1].radius = 0.4
+# agents[1].sensors[2].center = [0.0,0.0]
+# agents[1].sensors[2].radius = 0.4
+# agents[1].sensors[3].center = [-0.2,0.0]
+# agents[2].sensors[1].center = [0.35,0.6]
+# agents[2].sensors[1].radius = 0.4
+# agents[2].sensors[2].center = [-0.3,0.0]
+# agents[2].sensors[2].radius = 0.4
+# agents[2].sensors[3].center = [0.4,-0.2]
+# agents[3].sensors[1].center = [0.4,0.1]
+# agents[3].sensors[2].center = [0.8,0.8]
+# agents[3].sensors[3].center = [0.5,0.5]
 problem = ExplicitPartitionProblem(f, agents)
+# println(agents[1].sensors[1])
+# println(agents[1].sensors[2])
+# println(agents[1].sensors[3])
 
 function evaluate_solver(solver, name)
   println("$name solver running")
-  @time solution = solver(problem)
+  if(name == "Multiround Sequential")
+    @time solution = solver(problem, 3)
+  else
+    @time solution = solver(problem)
+  end
+  # @time solution = solver(problem)
 
   figure()
   xlim([0, 1])
@@ -48,6 +70,7 @@ end
 #evaluate_solver(solve_random, "Random")
 evaluate_solver(solve_sequential, "Sequential")
 evaluate_solver(solve_continuous, "Continuous")
+evaluate_solver(solve_sequential_multiround, "Multiround Sequential")
 
 # for num_partitions in [2, 4, 8]
 #   solve_n(p) = solve_n_partitions(num_partitions, p)
@@ -55,5 +78,9 @@ evaluate_solver(solve_continuous, "Continuous")
 # end
 
 #@show mean_weight(problem)
-#@show total_weight(problem)
+#@show 
+
+
+
+total_weight(problem)
 
